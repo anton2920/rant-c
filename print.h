@@ -7,10 +7,12 @@ void Fatal(char *, int);
 void FatalErr(Error *);
 
 void PrintCString(char *);
+void PrintCStringLn(char *);
+void PrintInt(int);
 void PrintKevent(struct kevent *);
 void PrintMsgCode(char *, int);
 void PrintNewline(void);
-void PrintPositiveInt(int);
 void PrintString(String s);
+void PrintStringLn(String s);
 
 #endif /* PRINT_H */

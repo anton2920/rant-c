@@ -2,37 +2,28 @@
 #include "slice.h"
 #include "string.h"
 
+#include "error.h"
+#include "print.h"
 #include "syscall.h"
 
 void
 _assert_fail(char *expr, char *file, int line)
 {
 	char	buffer[1024];
-	int	ndigits;
-	uint64 n;
+	uint64 n = 0;
 	Slice s;
 
 	/* file:line: Assertion `expr' failed. */
 	s = SliceFrom(buffer, sizeof(buffer));
 
-	n = SliceWriteCString(s, file);
-	s = SliceLeft(s, n);
+	n += SlicePutCString(SliceLeft(s, n), file);
+	n += SlicePutCString(SliceLeft(s, n), ":");
+	n += SlicePutInt(SliceLeft(s, n), line);
+	n += SlicePutCString(SliceLeft(s, n), "Assertion `");
+	n += SlicePutCString(SliceLeft(s, n), expr);
+	n += SlicePutCString(SliceLeft(s, n), "' failed.");
 
-	n = SliceWriteCString(s, ":");
-	s = SliceLeft(s, n);
-
-	ndigits = SlicePutInt(s, line);
-	s = SliceLeft(s, ndigits);
-
-	n = SliceWriteCString(s, "Assertion `");
-	s = SliceLeft(s, n);
-
-	n = SliceWriteCString(s, expr);
-	s = SliceLeft(s, n);
-
-	n = SliceWriteCString(s, "' failed.");
-
-	Write(2, s.Base, s.Len);
+	PrintStringLn(StringFrom(s.Base, n));
 	Exit(1);
 }
 

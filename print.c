@@ -22,7 +22,7 @@ FatalErr(Error *e)
 {
 	PrintCString("Fatal: ");
 	PrintString(e->Message);
-	PrintPositiveInt(e->Code);
+	PrintInt(e->Code);
 	PrintNewline();
 	Exit(1);
 }
@@ -36,36 +36,15 @@ PrintCString(char *cstr)
 
 
 void
-PrintKevent(struct kevent *e)
+PrintCStringLn(char *cstr)
 {
-	PrintCString("EVENT: ");
-	PrintPositiveInt(e->ident);
-	PrintCString(" ");
-	PrintPositiveInt(e->filter);
-	PrintCString(" ");
-	PrintPositiveInt(e->flags);
+	PrintCString(cstr);
 	PrintNewline();
 }
 
 
 void
-PrintMsgCode(char *msg, int code)
-{
-	PrintCString(msg);
-	PrintPositiveInt(code);
-	PrintNewline();
-}
-
-
-void
-PrintNewline(void)
-{
-	Write(2, "\n", 1);
-}
-
-
-void
-PrintPositiveInt(int x)
+PrintInt(int x)
 {
 	char	buffer[20];
 	int	ndigits;
@@ -78,9 +57,56 @@ PrintPositiveInt(int x)
 
 
 void
+PrintKevent(struct kevent *e)
+{
+	char	buffer[100];
+	int	n = 0;
+	Slice s;
+
+	s = SliceFrom(buffer, sizeof(buffer));
+
+	n += SlicePutCString(SliceLeft(s, n), "EVENT: ");
+	n += SlicePutInt(SliceLeft(s, n), e->ident);
+	n += SlicePutCString(SliceLeft(s, n), " ");
+	n += SlicePutInt(SliceLeft(s, n), e->filter);
+	n += SlicePutCString(SliceLeft(s, n), " ");
+	n += SlicePutInt(SliceLeft(s, n), e->flags & 0xF);
+	n += SlicePutCString(SliceLeft(s, n), " ");
+	n += SlicePutInt(SliceLeft(s, n), e->data);
+
+	PrintString(StringFrom(s.Base, n));
+	PrintNewline();
+}
+
+
+void
+PrintMsgCode(char *msg, int code)
+{
+	PrintCString(msg);
+	PrintInt(code);
+	PrintNewline();
+}
+
+
+void
+PrintNewline(void)
+{
+	Write(2, "\n", 1);
+}
+
+
+void
 PrintString(String s)
 {
 	Write(2, s.Base, s.Len);
+}
+
+
+void
+PrintStringLn(String s)
+{
+	PrintString(s);
+	PrintNewline();
 }
 
 

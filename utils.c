@@ -24,11 +24,10 @@ CStringLength(char *s)
 	while (*s++)
 		;
 
-	return s - saved;
+	return s - saved - 1;
 }
 
 
-/*
 void *
 memcpy(void *dst, const void *src, uint64 size)
 {
@@ -40,6 +39,5 @@ memcpy(void *dst, const void *src, uint64 size)
 	cast.cptr = src;
 	return CopyMemory(dst, cast.ptr, size);
 }
-*/
 
 

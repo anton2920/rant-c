@@ -6,8 +6,7 @@ typedef struct {
 	uint64 Len;
 } String;
 
+String StringFrom(char *, uint64);
 String StringFromCString(char *);
-
-void PrintString(String);
 
 #endif /* STRING_H */

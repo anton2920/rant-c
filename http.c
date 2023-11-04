@@ -13,6 +13,7 @@
 #include "http.h"
 #include "print.h"
 #include "syscall.h"
+#include "time.h"
 #include "utils.h"
 
 int16
@@ -28,7 +29,8 @@ HTTPWorker(int l, HTTPRouter router)
 	struct kevent chlist[2], events[256], *e;
 	int	kq, ret, nevents, i, c;
 	struct timespec tp;
-	char	date[31];
+	char	dateBuf[31];
+	Slice date;
 
 	if ((kq = Kqueue()) < 0) {
 		Fatal("Failed to open kqueue: ", kq);
@@ -44,6 +46,7 @@ HTTPWorker(int l, HTTPRouter router)
 		Fatal("Failed to get current walltime: ", ret);
 	}
 	tp.tv_nsec = 0;
+	date = SliceFrom(dateBuf, sizeof(dateBuf));
 
 	while (1) {
 		if ((nevents = Kevent(kq, nil, 0, events, ArrayLength(events), nil)) < 0) {
@@ -67,6 +70,11 @@ HTTPWorker(int l, HTTPRouter router)
 
 				Write(c, "Test message from RANT (C edition)\n", sizeof("Test message from RANT (C edition)\n") - 1);
 				Close(c);
+			} else if (c == 1) {
+				tp.tv_sec += e->data;
+				SlicePutTmRFC822(date, TimeToTm(tp.tv_sec));
+				PrintStringLn(StringFrom(date.Base, date.Len));
+				continue;
 			}
 		}
 	}

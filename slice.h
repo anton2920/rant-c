@@ -1,6 +1,8 @@
 #ifndef SLICE_H
 #define SLICE_H
 
+struct tm ;
+
 typedef struct {
 	void *Base;
 	uint64 Len;
@@ -13,8 +15,10 @@ Slice SliceLeft(Slice, uint64);
 Slice SliceRight(Slice, uint64);
 Slice SliceLeftRight(Slice, uint64, uint64);
 
-uint64 SliceWriteCString(Slice, char *);
+uint64 SlicePutCString(Slice, char *);
 
-int	SlicePutInt(Slice, int);
+uint64 SlicePutInt(Slice, int);
+uint64 SlicePutTm(Slice, struct tm);
+uint64 SlicePutTmRFC822(Slice, struct tm);
 
 #endif /* SLICE_H */
