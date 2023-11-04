@@ -24,7 +24,7 @@ _start(void)
 
 	PrintCString("Listening on 0.0.0.0:7070...\n");
 	if ((err = ListenAndServe(port, Router)) != nil) {
-		FatalErr(err);
+		FatalErr("Failed to start HTTP server: ", err);
 	}
 	Exit(0);
 }

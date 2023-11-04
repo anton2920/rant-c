@@ -1,9 +1,9 @@
 #include "u.h"
 #include "string.h"
 
+#include "assert.h"
 #include "error.h"
 
-#include "assert.h"
 #include "atomic.h"
 
 Error ErrorsArena[256];
@@ -19,6 +19,15 @@ Error *NewError(char *msg, int code)
 	err->Message = StringFromCString(msg);
 	err->Code = code;
 	return err;
+}
+
+
+void
+SetOptionalError(Error **err, char *msg, int code)
+{
+	if (err != nil) {
+		*err = NewError(msg, code);
+	}
 }
 
 

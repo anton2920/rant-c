@@ -18,12 +18,9 @@ Fatal(char *msg, int code)
 
 
 void
-FatalErr(Error *e)
+FatalErr(char *msg, Error *err)
 {
-	PrintCString("Fatal: ");
-	PrintString(e->Message);
-	PrintInt(e->Code);
-	PrintNewline();
+	PrintErr(msg, err);
 	Exit(1);
 }
 
@@ -39,6 +36,15 @@ void
 PrintCStringLn(char *cstr)
 {
 	PrintCString(cstr);
+	PrintNewline();
+}
+
+
+void PrintErr(char *msg, Error *err)
+{
+	PrintCString(msg);
+	PrintString(err->Message);
+	PrintInt(err->Code);
 	PrintNewline();
 }
 

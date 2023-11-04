@@ -3,6 +3,8 @@
 #include "u.h"
 #include "syscall.h"
 
+int	SyscallErrno;
+
 uintptr
 Syscall6(int trap, uintptr a1, uintptr a2, uintptr a3, uintptr a4, uintptr a5, uintptr a6)
 {
@@ -14,7 +16,9 @@ Syscall6(int trap, uintptr a1, uintptr a2, uintptr a3, uintptr a4, uintptr a5, u
 	    "movq %7, %%r9\n\t"
 	    "syscall\n\t"
 	    "jnc Syscall6Noerror\n\t"
-	    "negq %%rax\n\r"
+	    "negq %%rax\n\t"
+	    "movq %%rax, SyscallErrno\n\t"
+	    "movq $-1, %%rax\n\t"
 	    "Syscall6Noerror:\n\t"
 :
 	    "=a" (ret)
@@ -36,7 +40,9 @@ Syscall(int trap, uintptr a1, uintptr a2, uintptr a3)
 	__asm__ __volatile__ (
 	    "syscall\n\t"
 	    "jnc SyscallNoerror\n\t"
-	    "negq %%rax\n\r"
+	    "negq %%rax\n\t"
+	    "movq %%rax, SyscallErrno\n\t"
+	    "movq $-1, %%rax\n\t"
 	    "SyscallNoerror:\n\t"
 :
 	    "=a" (ret)
@@ -84,6 +90,13 @@ Exit(int code)
 
 
 int
+Ftruncate(int fd, uint64 size)
+{
+	return Syscall(SYS_ftruncate, fd, size, 0);
+}
+
+
+int
 Kevent(int kq, struct kevent *changelist, int nchanges, struct kevent *eventlist, int nevents, struct timespec *timeout)
 {
 	return Syscall6(SYS_kevent, kq, (uintptr)changelist, nchanges, (uintptr)eventlist, nevents, (uintptr)timeout);
@@ -101,6 +114,34 @@ int
 Listen(int s, int backlog)
 {
 	return Syscall(SYS_listen, s, backlog, 0);
+}
+
+
+void *
+Mmap(void *addr, uint64 len, int prot, int flags, int fd, int64 offset)
+{
+	return (void * )Syscall6(SYS_mmap, (uintptr)addr, len, prot, flags, fd, offset);
+}
+
+
+int
+Munmap(void *addr, uint64 len)
+{
+	return Syscall(SYS_munmap, (uintptr)addr, len, 0);
+}
+
+
+int
+ShmOpen2(char *path, int flags, uint16 mode, int shmflags, char *name)
+{
+	return Syscall6(SYS_shm_open2, (uintptr)path, flags, mode, shmflags, (uintptr)name, 0);
+}
+
+
+int
+Shutdown(int s, int how)
+{
+	return Syscall(SYS_shutdown, s, how, 0);
 }
 
 
