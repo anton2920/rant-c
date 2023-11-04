@@ -36,7 +36,11 @@ case $1 in
 		run rm -f $PROJECT *.o
 		;;
 	disas | disasm)
-		run cc -o $PROJECT.s -O0 -s $CFLAGS $SRC
+		for file in $SRC; do
+			run cc -o $file.disas -O0 -S $CFLAGS $LDFLAGS $file
+		done
+		cat *.disas >$PROJECT.s
+		rm -f *.disas
 		;;
 	fmt)
 		if which cb >/dev/null; then

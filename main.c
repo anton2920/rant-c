@@ -1,12 +1,31 @@
-#include "types.h"
+#include "u.h"
+#include "slice.h"
+#include "string.h"
+#include "url.h"
+
+#include "error.h"
+#include "http.h"
+#include "print.h"
 #include "syscall.h"
 
-#define PrintString(str) Write(1, str, sizeof(str)-1)
+void
+Router(HTTPResponse *w, HTTPRequest *r)
+{
+	(void)w;
+	(void)r;
+}
+
 
 void
-_start()
+_start(void)
 {
-	PrintString("Hello, world!\n");
+	const int16 port = 7070;
+	Error	 * err;
+
+	PrintCString("Listening on 0.0.0.0:7070...\n");
+	if ((err = ListenAndServe(port, Router)) != nil) {
+		FatalErr(err);
+	}
 	Exit(0);
 }
 
