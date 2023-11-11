@@ -1,9 +1,8 @@
 #include "u.h"
-#include "slice.h"
-#include "string.h"
+#include "builtin.h"
 
-#include "error.h"
 #include "print.h"
+#include "slice.h"
 #include "syscall.h"
 
 void
@@ -11,10 +10,10 @@ _assert_fail(char *expr, char *file, int line)
 {
 	char	buffer[1024];
 	uint64 n = 0;
-	Slice s;
+	slice s;
 
 	/* file:line: Assertion `expr' failed. */
-	s = SliceFrom(buffer, sizeof(buffer));
+	s = UnsafeSlice(buffer, sizeof(buffer));
 
 	n += SlicePutCString(SliceLeft(s, n), file);
 	n += SlicePutCString(SliceLeft(s, n), ":");
@@ -23,7 +22,7 @@ _assert_fail(char *expr, char *file, int line)
 	n += SlicePutCString(SliceLeft(s, n), expr);
 	n += SlicePutCString(SliceLeft(s, n), "' failed.");
 
-	PrintStringLn(StringFrom(s.Base, n));
+	PrintString(String(SliceRight(s, n)));
 	Exit(1);
 }
 

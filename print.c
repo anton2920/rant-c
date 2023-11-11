@@ -1,64 +1,71 @@
-#include <sys/event.h>
-
 #include "u.h"
-#include "slice.h"
-#include "string.h"
+#include "builtin.h"
 
 #include "error.h"
 #include "print.h"
+#include "slice.h"
 #include "syscall.h"
-#include "utils.h"
+
+#include <sys/event.h>
+
+uint64 CStringLength(char *);
 
 void
-Fatal(char *msg, int code)
+Fatal(char *msg)
 {
-	PrintMsgCode(msg, code);
+	PrintCString(msg);
 	Exit(1);
 }
 
 
 void
-FatalErr(char *msg, Error *err)
+FatalError(char *msg, error err)
 {
-	PrintErr(msg, err);
+	PrintError(msg, err);
 	Exit(1);
+}
+
+
+static void
+PrintNewline(void)
+{
+	Write(2, "\n", 1, nil);
+}
+
+
+static void
+PrintInt(int x)
+{
+	char	buffer[20];
+	int	n;
+	slice s;
+
+	s = UnsafeSlice(buffer, sizeof(buffer));
+	n = SlicePutInt(s, x);
+	PrintString(String(SliceRight(s, n)));
+}
+
+
+static void
+Print(char *cstr)
+{
+	Write(2, cstr, CStringLength(cstr), nil);
 }
 
 
 void
 PrintCString(char *cstr)
 {
-	Write(2, cstr, CStringLength(cstr));
-}
-
-
-void
-PrintCStringLn(char *cstr)
-{
-	PrintCString(cstr);
+	Print(cstr);
 	PrintNewline();
 }
 
 
-void PrintErr(char *msg, Error *err)
+void PrintError(char *msg, error err)
 {
-	PrintCString(msg);
-	PrintString(err->Message);
-	PrintInt(err->Code);
-	PrintNewline();
-}
-
-
-void
-PrintInt(int x)
-{
-	char	buffer[20];
-	int	ndigits;
-	Slice s;
-
-	s = SliceFrom(buffer, sizeof(buffer));
-	ndigits = SlicePutInt(s, x);
-	Write(2, s.Base, ndigits);
+	Print(msg);
+	Print(" ");
+	PrintString(err->Error(err));
 }
 
 
@@ -67,9 +74,9 @@ PrintKevent(struct kevent *e)
 {
 	char	buffer[100];
 	int	n = 0;
-	Slice s;
+	slice s;
 
-	s = SliceFrom(buffer, sizeof(buffer));
+	s = UnsafeSlice(buffer, sizeof(buffer));
 
 	n += SlicePutCString(SliceLeft(s, n), "EVENT: ");
 	n += SlicePutInt(SliceLeft(s, n), e->ident);
@@ -80,38 +87,24 @@ PrintKevent(struct kevent *e)
 	n += SlicePutCString(SliceLeft(s, n), " ");
 	n += SlicePutInt(SliceLeft(s, n), e->data);
 
-	PrintString(StringFrom(s.Base, n));
-	PrintNewline();
+	PrintString(String(SliceRight(s, n)));
 }
 
 
 void
 PrintMsgCode(char *msg, int code)
 {
-	PrintCString(msg);
+	Print(msg);
+	Print(" ");
 	PrintInt(code);
 	PrintNewline();
 }
 
 
 void
-PrintNewline(void)
+PrintString(string s)
 {
-	Write(2, "\n", 1);
-}
-
-
-void
-PrintString(String s)
-{
-	Write(2, s.Base, s.Len);
-}
-
-
-void
-PrintStringLn(String s)
-{
-	PrintString(s);
+	Write(2, s.base, s.len, nil);
 	PrintNewline();
 }
 

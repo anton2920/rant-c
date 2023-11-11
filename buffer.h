@@ -8,18 +8,18 @@ typedef struct {
 	uint64 Tail;
 } CircularBuffer;
 
-CircularBuffer NewCircularBuffer(uint64, Error **);
+CircularBuffer NewCircularBuffer(uint64, error *);
 
 void Consume(CircularBuffer *, int);
 void Produce(CircularBuffer *, int);
 
 uint64 RemainingSpace(CircularBuffer *);
-Slice RemainingSlice(CircularBuffer *);
+slice RemainingSlice(CircularBuffer *);
 
 void Reset(CircularBuffer *);
 
 uint64 UnconsumedLen(CircularBuffer *);
-Slice UnconsumedSlice(CircularBuffer *);
-String UnconsumedString(CircularBuffer *);
+slice UnconsumedSlice(CircularBuffer *);
+string Unconsumedstring(CircularBuffer *);
 
 #endif /* BUFFER_H */

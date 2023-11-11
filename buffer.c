@@ -2,50 +2,53 @@
 #include <sys/mman.h>
 
 #include "u.h"
-#include "slice.h"
-#include "string.h"
+#include "builtin.h"
 
 #include "assert.h"
+#include "buffer.h"
 #include "error.h"
+#include "slice.h"
 #include "syscall.h"
 
-#include "buffer.h"
-
 CircularBuffer
-NewCircularBuffer(uint64 size, Error **err)
+NewCircularBuffer(uint64 size, error *e)
 {
 	CircularBuffer cb;
 	char	*buffer;
+	error err;
 	int	fd;
 
-	CheckOptionalError(err);
 	assert(size % 4096 == 0);
 
 	cb.Buf = nil;
 	cb.Len = cb.Head = cb.Tail = 0;
 
-	if ((fd = ShmOpen2(SHM_ANON, O_RDWR, 0, 0, nil)) < 0) {
-		SetOptionalError(err, "failed to open shared memory region: ", SyscallErrno);
+	fd = ShmOpen2(SHM_ANON, O_RDWR, 0, 0, nil, &err);
+	if (err != nil) {
+		*e = err;
 		return cb;
 	}
 
-	if (Ftruncate(fd, size) < 0) {
-		SetOptionalError(err, "failed to adjust size of shared memory region: ",  SyscallErrno);
+	if ((err = Ftruncate(fd, size)) != nil) {
+		*e = err;
 		return cb;
 	}
 
-	if ((buffer = Mmap(nil, 2 * size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0)) == MAP_FAILED) {
-		SetOptionalError(err, "failed to adjust size of shared memory region",  SyscallErrno);
+	buffer = Mmap(nil, 2 * size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0, &err);
+	if (err != nil) {
+		*e = err;
 		return cb;
 	}
 
-	if (Mmap(buffer, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED) {
-		SetOptionalError(err, "failed to map first view of buffer: ",  SyscallErrno);
+	Mmap(buffer, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0, &err);
+	if (err != nil) {
+		*e = err;
 		return cb;
 	}
 
-	if (Mmap(buffer + size, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED) {
-		SetOptionalError(err, "failed to adjust size of shared memory region: ",  SyscallErrno);
+	Mmap(buffer + size, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0, &err);
+	if (err != nil) {
+		*e = err;
 		return cb;
 	}
 

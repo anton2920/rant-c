@@ -1,15 +1,21 @@
 #ifndef ERROR_H
 #define ERROR_H
 
-#define CheckOptionalError(err) assert(((err) != nil) && (*(err) == nil))
+#define ErrorSet(perr, err) \
+	do { \
+		if (perr != nil) { \
+			*perr = err; \
+		} \
+	} while(0)
 
 typedef struct {
-	String Message;
+	string (*Error)(error);
+	string Message;
 	int	Code;
-} Error;
+} E;
 
-Error *NewError(char *, int);
-
-void SetOptionalError(Error **, char *, int);
+error Error(char *);
+error ErrorWithCode(char *, int);
+error SyscallError(char *, uintptr);
 
 #endif /* ERROR_H */

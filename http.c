@@ -1,24 +1,21 @@
+#include "u.h"
+#include "builtin.h"
+
+#include "atomic.h"
+#include "buffer.h"
+#include "error.h"
+#include "http.h"
+#include "pool.h"
+#include "print.h"
+#include "slice.h"
+#include "syscall.h"
+#include "time.h"
+
 #include <netinet/in.h>
 #include <sys/event.h>
 #include <sys/socket.h>
 #include <errno.h>
 #include <time.h>
-
-#include "u.h"
-#include "slice.h"
-#include "string.h"
-#include "url.h"
-
-#include "atomic.h"
-#include "error.h"
-#include "http.h"
-#include "pool.h"
-#include "print.h"
-#include "syscall.h"
-#include "time.h"
-#include "utils.h"
-
-#include "buffer.h"
 
 typedef enum {
 	HTTP_STATE_UNKNOWN,
@@ -38,7 +35,6 @@ typedef struct {
 
 typedef struct {
 	CircularBuffer RequestBuffer;
-	CircularBuffer ResponseBuffer;
 
 	HTTPRequestParser Parser;
 
@@ -61,17 +57,11 @@ NewHTTPContext()
 {
 	uint64 i = AtomicAddInt32(&HTTPContextArenaLastItem, 1);
 	HTTPContext * c = &HTTPContextArena[i];
-	Error * err = nil;
+	error err;
 
 	c->RequestBuffer = NewCircularBuffer(2 * 4096, &err);
 	if (err != nil) {
-		PrintErr("ERROR: failed to create request buffer: ", err);
-		return nil;
-	}
-
-	c->ResponseBuffer = NewCircularBuffer(2 * (2 * 1024), &err);
-	if (err != nil) {
-		PrintErr("ERROR: failed to create response buffer: ", err);
+		PrintError("ERROR: failed to create request buffer:", err);
 		return nil;
 	}
 
@@ -87,38 +77,42 @@ HTTPWorker(int l, HTTPRouter router)
 	HTTPContext * ctx;
 	struct timespec tp;
 	char	dateBuf[31];
-	Error * err = nil;
 	Pool * ctxPool;
 	uintptr check;
-	Slice date;
+	slice date;
+	error err;
 
-	if ((kq = Kqueue()) < 0) {
-		Fatal("Failed to open kqueue: ", SyscallErrno);
+	kq = Kqueue(&err);
+	if (err != nil) {
+		FatalError("Failed to open kqueue:", err);
 	}
 
 	EV_SET(&chlist[0], l, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, 0);
 	EV_SET(&chlist[1], 1, EVFILT_TIMER, EV_ADD, NOTE_SECONDS, 1, 0);
-	if (Kevent(kq, chlist, ArrayLength(chlist), nil, 0, nil) < 0) {
-		Fatal("Failed to add event for listener socket: ", SyscallErrno);
+	Kevent(kq, chlist, 2, nil, 0, nil, &err);
+	if (err != nil) {
+		FatalError("Failed to add event for listener socket:", err);
 	}
 
-	if (ClockGettime(CLOCK_REALTIME, &tp) < 0) {
-		Fatal("Failed to get current walltime: ", SyscallErrno);
+	if ((err = ClockGettime(CLOCK_REALTIME, &tp)) != nil) {
+		FatalError("Failed to get current walltime:", err);
 	}
 	tp.tv_nsec = 0;
-	date = SliceFrom(dateBuf, sizeof(dateBuf));
+	date = UnsafeSlice(dateBuf, sizeof(dateBuf));
 
 	ctxPool = NewPool((NewPoolItemFunc)NewHTTPContext, &err);
 	if (err != nil) {
-		FatalErr("Failed to create HTTP context pool: ", err);
+		FatalError("Failed to create HTTP context pool: ", err);
 	}
 
 	while (1) {
-		if ((nevents = Kevent(kq, nil, 0, events, ArrayLength(events), nil)) < 0) {
-			if (-nevents == EINTR) {
+		nevents = Kevent(kq, nil, 0, events, sizeof(events) / sizeof(events[0]), nil, &err);
+		if (err != nil) {
+			int	code = ((E *)err)->Code;
+			if (code == EINTR) {
 				continue;
 			}
-			PrintMsgCode("ERROR: failed to get requested kernel events: ", -nevents);
+			PrintMsgCode("ERROR: failed to get requested kernel events:", code);
 		}
 
 		for (i = 0; i < nevents; ++i) {
@@ -130,22 +124,22 @@ HTTPWorker(int l, HTTPRouter router)
 			if (c == l) {
 				void * udata;
 
-				if ((c = Accept(l, nil, 0)) < 0) {
-					PrintMsgCode("ERROR: failed to accept connection: ", SyscallErrno);
+				if ((err = Accept(l, nil, 0)) != nil) {
+					PrintError("ERROR: failed to accept connection:", err);
 					continue;
 				}
 
 				ctx = PoolGet(ctxPool);
 				if (ctx == nil) {
-					PrintCStringLn("Failed to acquire new context");
-					goto closeConnection;
+					Fatal("Failed to acquire new context");
 				}
 
 				udata = (void * )((uintptr)ctx | ctx->Check);
 				EV_SET(&chlist[0], c, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, udata);
 				EV_SET(&chlist[1], c, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, udata);
-				if (Kevent(kq, chlist, ArrayLength(chlist), nil, 0, nil) < 0) {
-					PrintMsgCode("ERROR: failed to add new events to kqueue: ", SyscallErrno);
+				Kevent(kq, chlist, 2, nil, 0, nil, &err);
+				if (err != nil) {
+					PrintError("ERROR: failed to add new events to kqueue:", err);
 					PoolPut(ctxPool, ctx);
 					goto closeConnection;
 				}
@@ -153,7 +147,7 @@ HTTPWorker(int l, HTTPRouter router)
 			} else if (c == 1) {
 				tp.tv_sec += e->data;
 				SlicePutTmRFC822(date, TimeToTm(tp.tv_sec));
-				PrintStringLn(StringFrom(date.Base, date.Len));
+				PrintString(UnsafeString(date.base, date.len));
 				continue;
 			}
 
@@ -167,7 +161,10 @@ HTTPWorker(int l, HTTPRouter router)
 			case EVFILT_READ:
 				break;
 			case EVFILT_WRITE:
-				Write(c, "Hello, world!\n", sizeof("Hello, world!\n") - 1);
+				Write(c, "Hello, world!\n", sizeof("Hello, world!\n") - 1, &err);
+				if (err != nil) {
+					PrintError("ERROR: failed to write hello, world!:", err);
+				}
 				goto closeConnection;
 				break;
 			}
@@ -186,25 +183,27 @@ closeConnection:
 }
 
 
-Error *
+error
 ListenAndServe(int16 port, HTTPRouter router)
 {
 	struct sockaddr_in addr;
+	error err;
 	int	l;
 
-	if ((l = Socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-		return NewError("failed to create socket: ", SyscallErrno);
+	l = Socket(PF_INET, SOCK_STREAM, 0, &err);
+	if (err != nil) {
+		return err;
 	}
 
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
 	addr.sin_port = SwapBytesInPort(port);
-	if (Bind(l, (struct sockaddr *) & addr, sizeof(addr)) < 0) {
-		return NewError("failed to bind socket: ", SyscallErrno);
+	if ((err = Bind(l, (struct sockaddr *) & addr, sizeof(addr))) != nil) {
+		return err;
 	}
 
-	if (Listen(l, 128) < 0) {
-		return NewError("failed to listen on socket: ", SyscallErrno);
+	if ((err = Listen(l, 128)) != nil) {
+		return err;
 	}
 
 	/* TODO(anton2920): add more threads. */

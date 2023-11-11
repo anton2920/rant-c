@@ -1,84 +1,103 @@
-#include <sys/syscall.h>
-
 #include "u.h"
+#include "builtin.h"
+
+#include "error.h"
 #include "syscall.h"
 
-int	SyscallErrno;
+#include <sys/syscall.h>
 
-uintptr
+typedef struct {
+	uintptr r1;
+	uintptr r2;
+	uintptr errno;
+} SyscallResult;
+
+SyscallResult
 Syscall6(int trap, uintptr a1, uintptr a2, uintptr a3, uintptr a4, uintptr a5, uintptr a6)
 {
-	uintptr ret;
+	SyscallResult r;
 
 	__asm__ __volatile__ (
-	    "movq %5, %%r10\n\t"
-	    "movq %6, %%r8\n\t"
-	    "movq %7, %%r9\n\t"
+	    "movq	%7, %%r10\n\t"
+	    "movq	%8, %%r8\n\t"
+	    "movq	%9, %%r9\n\t"
 	    "syscall\n\t"
-	    "jnc Syscall6Noerror\n\t"
-	    "negq %%rax\n\t"
-	    "movq %%rax, SyscallErrno\n\t"
-	    "movq $-1, %%rax\n\t"
-	    "Syscall6Noerror:\n\t"
+	    "jnc Syscall6OK\n\t"
+	    "movq	$-1, %0\n\t"
+	    "movq	$0, %1\n\t"
+	    "movq	%%rax, %2\n\t"
+	    "Syscall6OK:\n\t"
+	    "movq	%%rax, %0\n\t"
+	    "movq	%%rdx, %1\n\t"
+	    "movq	$0, %2\n\t"
 :
-	    "=a" (ret)
+	    "=m" (r.r1), "=m" (r.r2), "=m" (r.errno)
 :
 	    "a" (trap), "D" (a1), "S" (a2), "d" (a3), "m" (a4), "m" (a5), "m" (a6)
 :
-	    "r10", "r8", "r9"
+	    "rcx", "r8", "r9", "r10", "r11"
 	    );
 
-	return ret;
+	return r;
 }
 
 
-uintptr
+SyscallResult
 Syscall(int trap, uintptr a1, uintptr a2, uintptr a3)
 {
-	uintptr ret;
+	SyscallResult r;
 
 	__asm__ __volatile__ (
 	    "syscall\n\t"
-	    "jnc SyscallNoerror\n\t"
-	    "negq %%rax\n\t"
-	    "movq %%rax, SyscallErrno\n\t"
-	    "movq $-1, %%rax\n\t"
-	    "SyscallNoerror:\n\t"
+	    "jnc SyscallOK\n\t"
+	    "movq	$-1, %0\n\t"
+	    "movq	$0, %1\n\t"
+	    "movq	%%rax, %2\n\t"
+	    "SyscallOK:\n\t"
+	    "movq	%%rax, %0\n\t"
+	    "movq	%%rdx, %1\n\t"
+	    "movq	$0, %2\n\t"
 :
-	    "=a" (ret)
+	    "=m" (r.r1), "=m" (r.r2), "=m" (r.errno)
 :
 	    "a" (trap), "D" (a1), "S" (a2), "d" (a3)
+:
+	    "rcx", "r8", "r9", "r10", "r11"
 	    );
 
-	return ret;
+	return r;
 }
 
 
-int
+error
 Accept(int s, struct sockaddr *addr, int addrlen)
 {
-	return Syscall(SYS_accept, s, (uintptr)addr, addrlen);
+	SyscallResult r = Syscall(SYS_accept, s, (uintptr)addr, addrlen);
+	return SyscallError("accept failed with code", r.errno);
 }
 
 
-int
+error
 Bind(int s, struct sockaddr *addr, int addrlen)
 {
-	return Syscall(SYS_bind, s, (uintptr)addr, addrlen);
+	SyscallResult r = Syscall(SYS_bind, s, (uintptr)addr, addrlen);
+	return SyscallError("bind failed with code", r.errno);
 }
 
 
-int
+error
 ClockGettime(int clockID, struct timespec *tp)
 {
-	return Syscall(SYS_clock_gettime, clockID, (uintptr)tp, 0);
+	SyscallResult r = Syscall(SYS_clock_gettime, clockID, (uintptr)tp, 0);
+	return SyscallError("clock_gettime failed with code", r.errno);
 }
 
 
-int
+error
 Close(int fd)
 {
-	return Syscall(SYS_close, fd, 0, 0);
+	SyscallResult r = Syscall(SYS_close, fd, 0, 0);
+	return SyscallError("close failed with code", r.errno);
 }
 
 
@@ -89,73 +108,81 @@ Exit(int code)
 }
 
 
-int
+error
 Ftruncate(int fd, uint64 size)
 {
-	return Syscall(SYS_ftruncate, fd, size, 0);
+	SyscallResult r =  Syscall(SYS_ftruncate, fd, size, 0);
+	return SyscallError("ftruncate failed with code", r.errno);
 }
 
 
 int
-Kevent(int kq, struct kevent *changelist, int nchanges, struct kevent *eventlist, int nevents, struct timespec *timeout)
+Kevent(int kq, struct kevent *changelist, int nchanges, struct kevent *eventlist, int nevents, struct timespec *timeout, error *err)
 {
-	return Syscall6(SYS_kevent, kq, (uintptr)changelist, nchanges, (uintptr)eventlist, nevents, (uintptr)timeout);
+	SyscallResult r =  Syscall6(SYS_kevent, kq, (uintptr)changelist, nchanges, (uintptr)eventlist, nevents, (uintptr)timeout);
+	ErrorSet(err, SyscallError("kevent failed with code", r.errno));
+	return r.r1;
 }
 
 
 int
-Kqueue(void)
+Kqueue(error *err)
 {
-	return Syscall(SYS_kqueue, 0, 0, 0);
+	SyscallResult r = Syscall(SYS_kqueue, 0, 0, 0);
+	ErrorSet(err, SyscallError("kqueue failed with code", r.errno));
+	return r.r1;
 }
 
 
-int
+error
 Listen(int s, int backlog)
 {
-	return Syscall(SYS_listen, s, backlog, 0);
+	SyscallResult r =  Syscall(SYS_listen, s, backlog, 0);
+	return SyscallError("listen failed with code", r.errno);
 }
 
 
 void *
-Mmap(void *addr, uint64 len, int prot, int flags, int fd, int64 offset)
+Mmap(void *addr, uint64 len, int prot, int flags, int fd, int64 offset, error *err)
 {
-	return (void * )Syscall6(SYS_mmap, (uintptr)addr, len, prot, flags, fd, offset);
+	SyscallResult r = Syscall6(SYS_mmap, (uintptr)addr, len, prot, flags, fd, offset);
+	ErrorSet(err, SyscallError("mmap failed with code", r.errno));
+	return (void * )r.r1;
 }
 
 
 int
-Munmap(void *addr, uint64 len)
+ShmOpen2(char *path, int flags, uint16 mode, int shmflags, char *name, error *err)
 {
-	return Syscall(SYS_munmap, (uintptr)addr, len, 0);
+	SyscallResult r = Syscall6(SYS_shm_open2, (uintptr)path, flags, mode, shmflags, (uintptr)name, 0);
+	ErrorSet(err, SyscallError("shm_open2 failed with code", r.errno));
+	return r.r1;
 }
 
 
-int
-ShmOpen2(char *path, int flags, uint16 mode, int shmflags, char *name)
-{
-	return Syscall6(SYS_shm_open2, (uintptr)path, flags, mode, shmflags, (uintptr)name, 0);
-}
-
-
-int
+error
 Shutdown(int s, int how)
 {
-	return Syscall(SYS_shutdown, s, how, 0);
+	SyscallResult r = Syscall(SYS_shutdown, s, how, 0);
+	return SyscallError("shutdown failed with code", r.errno);
 }
 
 
 int
-Socket(int domain, int typ, int protocol)
+Socket(int domain, int typ, int protocol, error *err)
 {
-	return Syscall(SYS_socket, domain, typ, protocol);
+	SyscallResult r = Syscall(SYS_socket, domain, typ, protocol);
+	ErrorSet(err, SyscallError("socket failed with code", r.errno));
+	return r.r1;
 }
 
 
 int64
-Write(int fd, void *buf, uint64 nbytes)
+Write(int fd, void *buf, uint64 nbytes, error *err)
 {
-	return Syscall(SYS_write, fd, (uintptr) buf, nbytes);
+	SyscallResult r = Syscall(SYS_write, fd, (uintptr) buf, nbytes);
+	ErrorSet(err, SyscallError("write failed with code", r.errno));
+	return r.r1;
 }
 
 

@@ -5,8 +5,8 @@ typedef void *(*NewPoolItemFunc)();
 
 typedef struct Pool Pool;
 
-Pool *NewPool(NewPoolItemFunc, Error **);
-Error *PoolFree(Pool *);
+Pool *NewPool(NewPoolItemFunc, error *);
+error PoolFree(Pool *);
 
 void *PoolGet(Pool *);
 void PoolPut(Pool *, void *);

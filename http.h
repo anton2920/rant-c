@@ -2,28 +2,22 @@
 #define HTTP_H
 
 typedef struct {
-	String Method;
+	string Path;
+	string Query;
+} URL;
+
+typedef struct {
+	string Method;
 	URL URL;
-	String Version;
+	string Version;
 } HTTPRequest;
 
 typedef struct {
-	/* Buf points to 'ctx.ResponseBuffer.RemainingSlice()'. Used directly for responses with known sizes. */
-	Slice Buf;
-	uint64 Pos;
-
-	/* Date points to array with current date in RFC822 format, which updates every second by kevent timer. */
-	Slice Date;
-
-	/* ContentLength points to stack-allocated buffer enough to hold 'Content-Length' header. */
-	Slice ContentLength;
-
-	/* Body points to stack-allocated 64 KiB buffer. Used only for (*HTTPResponse).WriteResponse() calls. */
-	Slice Body;
+	int	i;
 } HTTPResponse;
 
 typedef void(*HTTPRouter)(HTTPResponse *, HTTPRequest *);
 
-Error	*ListenAndServe(int16 port, HTTPRouter router);
+error ListenAndServe(int16 port, HTTPRouter router);
 
 #endif /* HTTP_H */
