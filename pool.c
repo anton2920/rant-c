@@ -16,7 +16,7 @@ struct Pool {
 };
 
 Pool *
-NewPool(NewPoolItemFunc new, error *e)
+NewPool(NewPoolItemFunc new, error *perr)
 {
 	uint64 size = 1024 * sizeof(void * );
 	void * *stack;
@@ -25,7 +25,7 @@ NewPool(NewPoolItemFunc new, error *e)
 
 	stack = Mmap(nil, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_STACK | MAP_ANON, -1, 0, &err);
 	if (err != nil) {
-		*e = err;
+		ErrorSet(perr, err);
 		return nil;
 	}
 
@@ -35,6 +35,7 @@ NewPool(NewPoolItemFunc new, error *e)
 	p->Nitems = 0;
 	p->New = new;
 
+	ErrorSet(perr, nil);
 	return p;
 }
 

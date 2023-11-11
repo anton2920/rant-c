@@ -3,12 +3,8 @@
 
 #include "arena.h"
 #include "assert.h"
-#include "atomic.h"
 #include "error.h"
 #include "slice.h"
-
-static E ErrorsArena[256];
-static int	ErrorsArenaLast = -1;
 
 string
 EError(error e)
@@ -40,12 +36,7 @@ SyscallError(char *msg, uintptr code)
 	}
 
 	err = newobject(E);
-	if (err != nil) {
-		/* NOTE(anton2920): allocation failed, but we still need to return error. */
-		int	i = AtomicAddInt32(&ErrorsArenaLast, 1);
-		assert(((uint64) i) < (sizeof(ErrorsArena) / sizeof(ErrorsArena[0])));
-		err = &ErrorsArena[i];
-	}
+	assert(err != nil);
 
 	err->Message = UnsafeCString(msg);
 	err->Code = (int)code;

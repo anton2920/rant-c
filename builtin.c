@@ -57,7 +57,9 @@ SliceRight(slice s, uint64 rbytes)
 {
 	slice ret;
 
-	ret.len = s.len - rbytes;
+	ret.base = s.base;
+	ret.len = rbytes;
+	ret.cap = s.cap;
 
 	return ret;
 }

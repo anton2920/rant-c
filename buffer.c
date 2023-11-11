@@ -11,7 +11,7 @@
 #include "syscall.h"
 
 CircularBuffer
-NewCircularBuffer(uint64 size, error *e)
+NewCircularBuffer(uint64 size, error *perr)
 {
 	CircularBuffer cb;
 	char	*buffer;
@@ -25,30 +25,30 @@ NewCircularBuffer(uint64 size, error *e)
 
 	fd = ShmOpen2(SHM_ANON, O_RDWR, 0, 0, nil, &err);
 	if (err != nil) {
-		*e = err;
+		ErrorSet(perr, err);
 		return cb;
 	}
 
 	if ((err = Ftruncate(fd, size)) != nil) {
-		*e = err;
+		ErrorSet(perr, err);
 		return cb;
 	}
 
 	buffer = Mmap(nil, 2 * size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0, &err);
 	if (err != nil) {
-		*e = err;
+		ErrorSet(perr, err);
 		return cb;
 	}
 
 	Mmap(buffer, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0, &err);
 	if (err != nil) {
-		*e = err;
+		ErrorSet(perr, err);
 		return cb;
 	}
 
 	Mmap(buffer + size, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, fd, 0, &err);
 	if (err != nil) {
-		*e = err;
+		ErrorSet(perr, err);
 		return cb;
 	}
 
@@ -61,6 +61,7 @@ NewCircularBuffer(uint64 size, error *e)
 	cb.Buf[size] = '\0';
 	cb.Buf[2*size - 1] = '\0';
 
+	ErrorSet(perr, nil);
 	return cb;
 }
 

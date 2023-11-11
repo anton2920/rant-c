@@ -2,6 +2,7 @@
 #include "builtin.h"
 
 #include "arena.h"
+#include "assert.h"
 #include "print.h"
 #include "syscall.h"
 
@@ -19,47 +20,47 @@ ArenaSizeRoundUp(uint64 size)
 
 
 error
-ExtendArenaBy(Arena a, uint64 size)
+ExtendArenaBy(Arena *a, uint64 size)
 {
 	void * addr;
 	error err;
 	int	flags;
 
-	if (a.Base == nil) {
+	if (a->Base == nil) {
 		addr = nil;
 		flags = 0;
 	} else {
-		addr = (char *)a.Base + a.Allocated;
+		addr = (char *)a->Base + a->Allocated;
 		flags = MAP_FIXED | MAP_EXCL;
 	}
 	size = max(PageSize, ArenaSizeRoundUp(size));
 
-	addr = Mmap(addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | flags, 0, -1, &err);
+	addr = Mmap(addr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | flags, -1, 0, &err);
 	if (err != nil) {
 		return err;
 	}
-	if (a.Base == nil) {
-		a.Base = addr;
+	if (a->Base == nil) {
+		a->Base = addr;
 	}
-	a.Allocated += size;
+	a->Allocated += size;
 
 	return nil;
 }
 
 
 static void *
-AllocateFrom(Arena a, uint64 size)
+AllocateFrom(Arena *a, uint64 size)
 {
 	char	*start;
 	error err;
 
-	start = (char *)a.Base + a.InUse;
-	if (a.InUse + size > a.Allocated) {
+	if (a->InUse + size > a->Allocated) {
 		if ((err = ExtendArenaBy(a, size)) != nil) {
 			FatalError("Failed to initialize new arena:", err);
 		}
 	}
-	a.InUse += size;
+	start = (char *)a->Base + a->InUse;
+	a->InUse += size;
 
 	return start;
 }
@@ -68,16 +69,20 @@ AllocateFrom(Arena a, uint64 size)
 void *
 Allocate(uint64 size)
 {
-	return AllocateFrom(GlobalArena, size);
+	return AllocateFrom(&GlobalArena, size);
 }
 
 
 string
 slicebytetostring(slice s)
 {
+	byte	 * memory;
 	string ret;
 
-	ret.base = Allocate(s.len);
+	memory = Allocate(s.len);
+	assert(memory != nil);
+
+	ret.base = memory;
 	ret.len = s.len;
 
 	copy(Slice(ret), s);

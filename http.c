@@ -1,6 +1,8 @@
 #include "u.h"
 #include "builtin.h"
 
+#include "arena.h"
+#include "assert.h"
 #include "atomic.h"
 #include "buffer.h"
 #include "error.h"
@@ -48,16 +50,15 @@ SwapBytesInPort(int16 port)
 }
 
 
-/* TODO(anton2920): replace with dynamic allocations. */
-HTTPContext HTTPContextArena[1024];
-int	HTTPContextArenaLastItem = -1;
-
 HTTPContext *
 NewHTTPContext()
 {
-	uint64 i = AtomicAddInt32(&HTTPContextArenaLastItem, 1);
-	HTTPContext * c = &HTTPContextArena[i];
+	HTTPContext * c = newobject(HTTPContext);
 	error err;
+
+	if (c == nil) {
+		return nil;
+	}
 
 	c->RequestBuffer = NewCircularBuffer(2 * 4096, &err);
 	if (err != nil) {
@@ -124,7 +125,8 @@ HTTPWorker(int l, HTTPRouter router)
 			if (c == l) {
 				void * udata;
 
-				if ((err = Accept(l, nil, 0)) != nil) {
+				c = Accept(l, nil, 0, &err);
+				if (err != nil) {
 					PrintError("ERROR: failed to accept connection:", err);
 					continue;
 				}
@@ -140,19 +142,18 @@ HTTPWorker(int l, HTTPRouter router)
 				Kevent(kq, chlist, 2, nil, 0, nil, &err);
 				if (err != nil) {
 					PrintError("ERROR: failed to add new events to kqueue:", err);
-					PoolPut(ctxPool, ctx);
 					goto closeConnection;
 				}
 				continue;
 			} else if (c == 1) {
 				tp.tv_sec += e->data;
 				SlicePutTmRFC822(date, TimeToTm(tp.tv_sec));
-				PrintString(UnsafeString(date.base, date.len));
+				/* PrintString(UnsafeString(date.base, date.len)); */
 				continue;
 			}
 
 			check = (uintptr)e->udata & 0x1;
-			ctx = (void * )((uintptr)ctx - check);
+			ctx = (void * )((uintptr)e->udata - check);
 			if (check != ctx->Check) {
 				continue;
 			}
@@ -170,10 +171,8 @@ HTTPWorker(int l, HTTPRouter router)
 			}
 
 closeConnection:
-			if (ctx != nil) {
-				ctx->Check = 1 - ctx->Check;
-				PoolPut(ctxPool, ctx);
-			}
+			ctx->Check = 1 - ctx->Check;
+			PoolPut(ctxPool, ctx);
 			Shutdown(c, SHUT_WR);
 			Close(c);
 		}
@@ -187,11 +186,16 @@ error
 ListenAndServe(int16 port, HTTPRouter router)
 {
 	struct sockaddr_in addr;
+	int	enable = 1;
 	error err;
 	int	l;
 
 	l = Socket(PF_INET, SOCK_STREAM, 0, &err);
 	if (err != nil) {
+		return err;
+	}
+
+	if ((err = Setsockopt(l, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable))) != nil) {
 		return err;
 	}
 

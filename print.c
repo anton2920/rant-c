@@ -65,7 +65,11 @@ void PrintError(char *msg, error err)
 {
 	Print(msg);
 	Print(" ");
-	PrintString(err->Error(err));
+	if (err != nil) {
+		PrintString(err->Error(err));
+	} else {
+		PrintNewline();
+	}
 }
 
 

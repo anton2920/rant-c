@@ -5,7 +5,7 @@ struct kevent ;
 struct sockaddr ;
 struct timespec ;
 
-error	Accept(int, struct sockaddr *, int);
+int	Accept(int, struct sockaddr *, int, error *);
 error	Bind(int, struct sockaddr *, int);
 error	ClockGettime(int, struct timespec *);
 error	Close(int);
@@ -15,6 +15,7 @@ int	Kevent(int, struct kevent *, int, struct kevent *, int, struct timespec *, e
 int	Kqueue(error *);
 error	Listen(int, int);
 void *Mmap(void *, uint64, int, int, int, int64, error *);
+error Setsockopt(int, int, int, void *, unsigned);
 int	ShmOpen2(char *, int, uint16, int, char *, error *);
 error	Shutdown(int, int);
 int	Socket(int, int, int, error *);
