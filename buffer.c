@@ -66,3 +66,63 @@ NewCircularBuffer(uint64 size, error *perr)
 }
 
 
+void
+Consume(CircularBuffer *cb, uint64 n)
+{
+	cb->Head += n;
+	if (cb->Head > cb->Len / 2) {
+		cb->Head -= cb->Len / 2;
+		cb->Tail -= cb->Len / 2;
+	}
+}
+
+
+void
+Produce(CircularBuffer *cb, uint64 n)
+{
+	cb->Tail += n;
+}
+
+
+slice
+RemainingSlice(CircularBuffer *cb)
+{
+	return SliceLeftRight(UnsafeSlice(cb->Buf, cb->Len), cb->Tail, cb->Head + cb->Len / 2);
+}
+
+
+uint64
+RemainingSpace(CircularBuffer *cb)
+{
+	return cb->Len / 2 - (cb->Tail - cb->Head);
+}
+
+
+void
+Reset(CircularBuffer *cb)
+{
+	cb->Head = cb->Tail;
+}
+
+
+uint64
+UnconsumedLen(CircularBuffer *cb)
+{
+	return cb->Tail - cb->Head;
+}
+
+
+slice
+UnconsumedSlice(CircularBuffer *cb)
+{
+	return UnsafeSlice(&cb->Buf[cb->Head], UnconsumedLen(cb));
+}
+
+
+string
+UnconsumedString(CircularBuffer *cb)
+{
+	return UnsafeString((byte * ) & cb->Buf[cb->Head], UnconsumedLen(cb));
+}
+
+

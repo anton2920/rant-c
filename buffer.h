@@ -10,8 +10,8 @@ typedef struct {
 
 CircularBuffer NewCircularBuffer(uint64, error *);
 
-void Consume(CircularBuffer *, int);
-void Produce(CircularBuffer *, int);
+void Consume(CircularBuffer *, uint64);
+void Produce(CircularBuffer *, uint64);
 
 uint64 RemainingSpace(CircularBuffer *);
 slice RemainingSlice(CircularBuffer *);

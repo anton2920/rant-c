@@ -6,6 +6,7 @@
 #include "atomic.h"
 #include "buffer.h"
 #include "error.h"
+#include "iovec.h"
 #include "http.h"
 #include "pool.h"
 #include "print.h"
@@ -37,11 +38,14 @@ typedef struct {
 
 typedef struct {
 	CircularBuffer RequestBuffer;
+	slice ResponseIovs;
 
 	HTTPRequestParser Parser;
 
 	uintptr Check;
 } HTTPContext;
+
+char	*HTTPResponseRequestEntityTooLarge = "HTTP/1.1 413 HTTPRequest Entity Too Large\r\nContent-Type: text/html\r\nConent-Length: ...\r\nConnection: close\r\n\r\n";
 
 int16
 SwapBytesInPort(int16 port)
@@ -51,7 +55,7 @@ SwapBytesInPort(int16 port)
 
 
 HTTPContext *
-NewHTTPContext()
+NewHTTPContext(void)
 {
 	HTTPContext * c = newobject(HTTPContext);
 	error err;
@@ -71,17 +75,32 @@ NewHTTPContext()
 
 
 void
+HTTPHandleRequests(slice *wIovs, CircularBuffer *rBuf, HTTPRequestParser *rp, slice contentLengthBuf, slice dateBuf, HTTPRouter router)
+{
+	(void)wIovs;
+	(void)rBuf;
+	(void)rp;
+	(void)contentLengthBuf;
+	(void)dateBuf;
+	(void)router;
+}
+
+
+void
 HTTPWorker(int l, HTTPRouter router)
 {
+	char	contentLengthArray[10], dateArray[31];
 	struct kevent chlist[2], events[256], *e;
+	slice contentLengthBuf, dateBuf;
+	HTTPRequestParser * parser;
 	int	kq, nevents, i, c;
+	CircularBuffer * rBuf;
 	HTTPContext * ctx;
 	struct timespec tp;
-	char	dateBuf[31];
 	Pool * ctxPool;
 	uintptr check;
-	slice date;
 	error err;
+	int64 n;
 
 	kq = Kqueue(&err);
 	if (err != nil) {
@@ -99,7 +118,9 @@ HTTPWorker(int l, HTTPRouter router)
 		FatalError("Failed to get current walltime:", err);
 	}
 	tp.tv_nsec = 0;
-	date = UnsafeSlice(dateBuf, sizeof(dateBuf));
+	dateBuf = UnsafeSlice(dateArray, sizeof(dateArray));
+
+	contentLengthBuf = UnsafeSlice(contentLengthArray, sizeof(contentLengthArray));
 
 	ctxPool = NewPool((NewPoolItemFunc)NewHTTPContext, &err);
 	if (err != nil) {
@@ -133,7 +154,8 @@ HTTPWorker(int l, HTTPRouter router)
 
 				ctx = PoolGet(ctxPool);
 				if (ctx == nil) {
-					Fatal("Failed to acquire new context");
+					PrintCString("ERROR: failed to acquire new context");
+					goto closeConnection;
 				}
 
 				udata = (void * )((uintptr)ctx | ctx->Check);
@@ -147,8 +169,7 @@ HTTPWorker(int l, HTTPRouter router)
 				continue;
 			} else if (c == 1) {
 				tp.tv_sec += e->data;
-				SlicePutTmRFC822(date, TimeToTm(tp.tv_sec));
-				/* PrintString(UnsafeString(date.base, date.len)); */
+				SlicePutTmRFC822(dateBuf, TimeToTm(tp.tv_sec));
 				continue;
 			}
 
@@ -160,25 +181,50 @@ HTTPWorker(int l, HTTPRouter router)
 
 			switch (e->filter) {
 			case EVFILT_READ:
+				if (e->flags & EV_EOF) {
+					goto closeConnection;
+				}
+
+				rBuf = &ctx->RequestBuffer;
+				parser = &ctx->Parser;
+
+				if (RemainingSpace(rBuf) == 0) {
+					struct iovec msg = IovecForCString(HTTPResponseRequestEntityTooLarge);
+					Shutdown(c, SHUT_RD);
+					Writev(c, UnsafeSlice(&msg, 1), nil);
+					goto closeConnection;
+				}
+
+				n = Read(c, RemainingSlice(rBuf), &err);
+				if (err != nil) {
+					PrintError("ERROR: failed to read data from socket:", err);
+					goto closeConnection;
+				}
+				Produce(rBuf, n);
+
+				HTTPHandleRequests(&ctx->ResponseIovs, rBuf, parser, contentLengthBuf, dateBuf, router);
+
 				break;
 			case EVFILT_WRITE:
-				Write(c, "Hello, world!\n", sizeof("Hello, world!\n") - 1, &err);
-				if (err != nil) {
-					PrintError("ERROR: failed to write hello, world!:", err);
+				if (e->flags & EV_EOF) {
+					PrintCString("I'm here!!!");
+					goto closeConnection;
 				}
-				goto closeConnection;
+
 				break;
 			}
+			continue;
 
 closeConnection:
-			ctx->Check = 1 - ctx->Check;
-			PoolPut(ctxPool, ctx);
+			if (ctx != nil) {
+				ctx->Check = 1 - ctx->Check;
+				PoolPut(ctxPool, ctx);
+			}
+
 			Shutdown(c, SHUT_WR);
 			Close(c);
 		}
 	}
-
-	(void)router;
 }
 
 

@@ -68,12 +68,10 @@ SliceRight(slice s, uint64 rbytes)
 slice
 SliceLeftRight(slice s, uint64 lbytes, uint64 rbytes)
 {
-	slice ret;
+	s = SliceLeft(s, lbytes);
+	s = SliceRight(s, rbytes);
 
-	ret = SliceLeft(s, lbytes);
-	ret = SliceRight(s, rbytes);
-
-	return ret;
+	return s;
 }
 
 

@@ -50,8 +50,16 @@ case $1 in
 			done
 		fi
 		;;
-	 release)
+	release)
 		run cc -o $PROJECT -O3 $CFLAGS $LDFLAGS $SRC
+		;;
+	vet)
+		if which clang-tidy >/dev/null; then
+			CHECKS='-*,clang-analyzer-*,-clang-analyzer-cplusplus*,-clang-analyzer-security.insecureAPI*,performance*,-performance-no-int-to-ptr -header-filter=.*'
+			echo -n $CFLAGS $LDFLAGS | sed 's/ /\n/g' >compile_flags.txt
+			run clang-tidy -warnings-as-errors=$CHECKS -system-headers *.c
+			rm -f compile_flags.txt
+		fi
 		;;
 esac
 

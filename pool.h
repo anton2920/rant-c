@@ -1,7 +1,7 @@
 #ifndef POOL_H
 #define POOL_H
 
-typedef void *(*NewPoolItemFunc)();
+typedef void *(*NewPoolItemFunc)(void);
 
 typedef struct Pool Pool;
 

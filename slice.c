@@ -22,7 +22,7 @@ SlicePutCString(slice s, char *cstr)
 uint64
 SlicePutInt(slice s, int x)
 {
-	int	ndigits = 0, rx, i = 0;
+	int	ndigits = 0, rx = 0, i = 0;
 	char	*buf = s.base;
 	int	sign = x < 0;
 

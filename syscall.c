@@ -156,6 +156,15 @@ Mmap(void *addr, uint64 len, int prot, int flags, int fd, int64 offset, error *p
 }
 
 
+int64
+Read(int fd, slice buf, error *perr)
+{
+	SyscallResult r = Syscall(SYS_read, fd, (uintptr)buf.base, buf.len);
+	ErrorSet(perr, SyscallError("read failed with code", r.errno));
+	return r.r1;
+}
+
+
 error
 Setsockopt(int s, int level, int optname, void *optval, unsigned optlen)
 {
@@ -195,6 +204,15 @@ Write(int fd, void *buf, uint64 nbytes, error *perr)
 {
 	SyscallResult r = Syscall(SYS_write, fd, (uintptr) buf, nbytes);
 	ErrorSet(perr, SyscallError("write failed with code", r.errno));
+	return r.r1;
+}
+
+
+int64
+Writev(int fd, slice iovs, error *perr)
+{
+	SyscallResult r = Syscall(SYS_writev, fd, (uintptr)iovs.base, iovs.len);
+	ErrorSet(perr, SyscallError("writev failed with code", r.errno));
 	return r.r1;
 }
 
