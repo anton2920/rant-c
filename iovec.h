@@ -3,6 +3,8 @@
 
 typedef struct iovec Iovec;
 
-struct iovec IovecForCString(char *);
+Iovec IovecForByteSlice(slice);
+Iovec IovecForCString(char *);
+Iovec IovecForString(string);
 
 #endif /* IOVEC_H */

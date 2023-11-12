@@ -22,16 +22,16 @@ Syscall6(int trap, uintptr a1, uintptr a2, uintptr a3, uintptr a4, uintptr a5, u
 	    "movq	%8, %%r8\n\t"
 	    "movq	%9, %%r9\n\t"
 	    "syscall\n\t"
-	    "jnc Syscall6OK\n\t"
+	    "jnc 0f\n\t"
 	    "movq	$-1, %0\n\t"
 	    "movq	$0, %1\n\t"
 	    "movq	%%rax, %2\n\t"
-	    "jmp Syscall6Fin\n\t"
-	    "Syscall6OK:\n\t"
+	    "jmp 1f\n\t"
+	    "0:\n\t"
 	    "movq	%%rax, %0\n\t"
 	    "movq	%%rdx, %1\n\t"
 	    "movq	$0, %2\n\t"
-	    "Syscall6Fin:\n\t"
+	    "1:\n\t"
 :
 	    "=m" (r.r1), "=m" (r.r2), "=m" (r.errno)
 :
@@ -51,16 +51,16 @@ Syscall(int trap, uintptr a1, uintptr a2, uintptr a3)
 
 	__asm__ __volatile__ (
 	    "syscall\n\t"
-	    "jnc SyscallOK\n\t"
+	    "jnc 0f\n\t"
 	    "movq	$-1, %0\n\t"
 	    "movq	$0, %1\n\t"
 	    "movq	%%rax, %2\n\t"
-	    "jmp SyscallFin\n\t"
-	    "SyscallOK:\n\t"
+	    "jmp 1f\n\t"
+	    "0:\n\t"
 	    "movq	%%rax, %0\n\t"
 	    "movq	%%rdx, %1\n\t"
 	    "movq	$0, %2\n\t"
-	    "SyscallFin:\n\t"
+	    "1:\n\t"
 :
 	    "=m" (r.r1), "=m" (r.r2), "=m" (r.errno)
 :
@@ -110,6 +110,15 @@ void
 Exit(int code)
 {
 	Syscall(SYS_exit, code, 0, 0);
+}
+
+
+int
+Fork(error *perr)
+{
+	SyscallResult r = Syscall(SYS_fork, 0, 0, 0);
+	ErrorSet(perr, SyscallError("fork failed with code", r.errno));
+	return r.r2;
 }
 
 

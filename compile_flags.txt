@@ -1,0 +1,8 @@
+-Wall
+-Wextra
+-Wpedantic
+-Werror
+-ansi
+-std=c89
+-static
+-nostdlib

@@ -51,7 +51,7 @@ case $1 in
 		fi
 		;;
 	release)
-		run cc -o $PROJECT -O3 $CFLAGS $LDFLAGS $SRC
+		run cc -o $PROJECT -O3 -mavx2 $CFLAGS $LDFLAGS $SRC
 		;;
 	vet)
 		if which clang-tidy >/dev/null; then

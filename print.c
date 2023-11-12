@@ -2,6 +2,7 @@
 #include "builtin.h"
 
 #include "error.h"
+#include "http.h"
 #include "print.h"
 #include "slice.h"
 #include "syscall.h"
@@ -34,19 +35,6 @@ PrintNewline(void)
 
 
 static void
-PrintInt(int x)
-{
-	char	buffer[20];
-	int	n;
-	slice s;
-
-	s = UnsafeSlice(buffer, sizeof(buffer));
-	n = SlicePutInt(s, x);
-	PrintString(String(SliceRight(s, n)));
-}
-
-
-static void
 Print(char *cstr)
 {
 	Write(2, cstr, CStringLength(cstr), nil);
@@ -70,6 +58,19 @@ void PrintError(char *msg, error err)
 	} else {
 		PrintNewline();
 	}
+}
+
+
+void
+PrintInt(int x)
+{
+	char	buffer[20];
+	int	n;
+	slice s;
+
+	s = UnsafeSlice(buffer, sizeof(buffer));
+	n = SlicePutInt(s, x);
+	PrintString(String(SliceRight(s, n)));
 }
 
 
@@ -101,7 +102,27 @@ PrintMsgCode(char *msg, int code)
 	Print(msg);
 	Print(" ");
 	PrintInt(code);
-	PrintNewline();
+}
+
+
+void
+PrintRequest(void *_r)
+{
+	HTTPRequest * r = _r;
+	char	buffer[100];
+	int	n = 0;
+	slice s;
+
+	s = UnsafeSlice(buffer, sizeof(buffer));
+
+	n += SlicePutCString(SliceLeft(s, n), "Executed: ");
+	n += SlicePutString(SliceLeft(s, n), r->Method);
+	n += SlicePutCString(SliceLeft(s, n), " ");
+	n += SlicePutString(SliceLeft(s, n), r->URL.Path);
+	n += SlicePutCString(SliceLeft(s, n), " ");
+	n += SlicePutString(SliceLeft(s, n), r->URL.Query);
+
+	PrintString(String(SliceRight(s, n)));
 }
 
 

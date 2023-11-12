@@ -1,7 +1,7 @@
 #include "u.h"
 #include "builtin.h"
+#include "runtime.h"
 
-#include "arena.h"
 #include "assert.h"
 #include "error.h"
 #include "slice.h"

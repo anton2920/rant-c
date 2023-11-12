@@ -1,6 +1,6 @@
 #ifndef STRING_H
 #define STRING_H
 
-uint64 CStringLength(char *);
+int64 FindChar(string, char);
 
 #endif /* STRING_H */

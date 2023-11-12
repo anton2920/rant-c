@@ -1,5 +1,8 @@
 #include "u.h"
 #include "builtin.h"
+#include "runtime.h"
+
+#include "assert.h"
 
 uint64
 CStringLength(char *s)
@@ -13,17 +16,15 @@ CStringLength(char *s)
 }
 
 
-void *
-memcpy(void *_dst, const void *_src, uint64 size)
+slice
+Slice(string s)
 {
-	const char * src = _src;
-	char	*dst = _dst;
+	slice ret;
 
-	while (size--) {
-		*dst++ = *src++;
-	}
+	ret.base = s.base;
+	ret.len = ret.cap = s.len;
 
-	return _dst;
+	return ret;
 }
 
 
@@ -57,6 +58,8 @@ SliceRight(slice s, uint64 rbytes)
 {
 	slice ret;
 
+	assert(rbytes <= s.cap);
+
 	ret.base = s.base;
 	ret.len = rbytes;
 	ret.cap = s.cap;
@@ -68,20 +71,25 @@ SliceRight(slice s, uint64 rbytes)
 slice
 SliceLeftRight(slice s, uint64 lbytes, uint64 rbytes)
 {
-	s = SliceLeft(s, lbytes);
-	s = SliceRight(s, rbytes);
+	slice ret;
 
-	return s;
+	assert(rbytes <= s.cap);
+
+	ret.base = (char *)s.base + lbytes;
+	ret.len = rbytes - lbytes;
+	ret.cap = s.cap - lbytes;
+
+	return ret;
 }
 
 
-slice
-Slice(string s)
+string
+String(slice s)
 {
-	slice ret;
+	string ret;
 
 	ret.base = s.base;
-	ret.len = ret.cap = s.len;
+	ret.len = s.len;
 
 	return ret;
 }
@@ -107,15 +115,40 @@ UnsafeCString(char *cstr)
 
 
 string
-String(slice s)
+StringLeft(string s, uint64 lbytes)
+{
+	string ret;
+
+	ret.base = (byte * )s.base + lbytes;
+	ret.len = s.len - lbytes;
+
+	return ret;
+}
+
+
+string
+StringRight(string s, uint64 rbytes)
 {
 	string ret;
 
 	ret.base = s.base;
-	ret.len = s.len;
+	ret.len = rbytes;
 
 	return ret;
 }
+
+
+string
+StringLeftRight(string s, uint64 lbytes, uint64 rbytes)
+{
+	string ret;
+
+	ret.base = s.base + lbytes;
+	ret.len = rbytes - lbytes;
+
+	return ret;
+}
+
 
 
 uint64

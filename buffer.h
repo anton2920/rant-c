@@ -20,6 +20,6 @@ void Reset(CircularBuffer *);
 
 uint64 UnconsumedLen(CircularBuffer *);
 slice UnconsumedSlice(CircularBuffer *);
-string Unconsumedstring(CircularBuffer *);
+string UnconsumedString(CircularBuffer *);
 
 #endif /* BUFFER_H */

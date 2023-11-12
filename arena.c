@@ -1,12 +1,17 @@
 #include "u.h"
 #include "builtin.h"
 
-#include "arena.h"
 #include "assert.h"
 #include "print.h"
 #include "syscall.h"
 
 #include <sys/mman.h>
+
+typedef struct {
+	void *Base;
+	uint64 InUse;
+	uint64 Allocated;
+} Arena;
 
 const uint64 PageSize = 4096;
 
@@ -73,20 +78,6 @@ Allocate(uint64 size)
 }
 
 
-string
-slicebytetostring(slice s)
-{
-	byte	 * memory;
-	string ret;
 
-	memory = Allocate(s.len);
-	assert(memory != nil);
-
-	ret.base = memory;
-	ret.len = s.len;
-
-	copy(Slice(ret), s);
-	return ret;
-}
 
 

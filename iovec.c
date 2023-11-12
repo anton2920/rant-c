@@ -5,15 +5,32 @@
 
 #include <sys/uio.h>
 
-uint64 CStringLength(char *);
+Iovec
+IovecForByteSlice(slice s)
+{
+	Iovec iov;
+
+	iov.iov_base = s.base;
+	iov.iov_len = s.len;
+
+	return iov;
+}
+
 
 Iovec
 IovecForCString(char *cstr)
 {
+	return IovecForString(UnsafeCString(cstr));
+}
+
+
+Iovec
+IovecForString(string s)
+{
 	Iovec iov;
 
-	iov.iov_base = cstr;
-	iov.iov_len = CStringLength(cstr);
+	iov.iov_base = s.base;
+	iov.iov_len = s.len;
 
 	return iov;
 }

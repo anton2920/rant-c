@@ -1,5 +1,6 @@
 #include "u.h"
 #include "builtin.h"
+#include "runtime.h"
 
 #include "print.h"
 #include "slice.h"
@@ -18,12 +19,12 @@ _assert_fail(char *expr, char *file, int line)
 	n += SlicePutCString(SliceLeft(s, n), file);
 	n += SlicePutCString(SliceLeft(s, n), ":");
 	n += SlicePutInt(SliceLeft(s, n), line);
-	n += SlicePutCString(SliceLeft(s, n), "Assertion `");
+	n += SlicePutCString(SliceLeft(s, n), ": Assertion `");
 	n += SlicePutCString(SliceLeft(s, n), expr);
 	n += SlicePutCString(SliceLeft(s, n), "' failed.");
 
 	PrintString(String(SliceRight(s, n)));
-	Exit(1);
+	Breakpoint;
 }
 
 

@@ -53,7 +53,7 @@ NewCircularBuffer(uint64 size, error *perr)
 	}
 
 	cb.Buf = buffer;
-	cb.Len = size;
+	cb.Len = 2 * size;
 
 	/* NOTE(anton2920): sanity checks. */
 	cb.Buf[0] = '\0';
@@ -101,7 +101,7 @@ RemainingSpace(CircularBuffer *cb)
 void
 Reset(CircularBuffer *cb)
 {
-	cb->Head = cb->Tail;
+	cb->Head = cb->Tail = 0;
 }
 
 

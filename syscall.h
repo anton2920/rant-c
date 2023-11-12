@@ -11,6 +11,7 @@ error	Bind(int, struct sockaddr *, int);
 error	ClockGettime(int, struct timespec *);
 error	Close(int);
 void Exit(int);
+int	Fork(error *);
 error	Ftruncate(int, uint64);
 int	Kevent(int, struct kevent *, int, struct kevent *, int, struct timespec *, error *);
 int	Kqueue(error *);

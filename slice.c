@@ -1,20 +1,27 @@
 #include "u.h"
 #include "builtin.h"
+#include "runtime.h"
 
+#include "slice.h"
 #include "string.h"
 
 #include <time.h>
 
-
-void *memcpy(void *, const void *, unsigned long);
+uint64 CStringLength(char *);
 
 uint64
 SlicePutCString(slice s, char *cstr)
 {
-	uint64 cstrLen = CStringLength(cstr);
-	uint64 toWrite = min(s.len, cstrLen);
+	return SlicePutString(s, UnsafeCString(cstr));
+}
 
-	memcpy(s.base, cstr, toWrite);
+
+uint64
+SlicePutString(slice sl, string s)
+{
+	uint64 toWrite = min(sl.len, s.len);
+
+	memcpy(sl.base, s.base, toWrite);
 	return toWrite;
 }
 

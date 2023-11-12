@@ -1,5 +1,6 @@
 #include "u.h"
 #include "builtin.h"
+#include "runtime.h"
 
 #include "error.h"
 #include "http.h"
@@ -7,10 +8,20 @@
 #include "syscall.h"
 
 void
+PlaintextHandler(HTTPResponse *w, HTTPRequest *r)
+{
+	(void)r;
+
+	WriteResponseNoCopy(w, StringLiteral("text/plain"), Slice(StringLiteral("Hello, world!\n")));
+}
+
+
+void
 Router(HTTPResponse *w, HTTPRequest *r)
 {
-	(void)w;
-	(void)r;
+	if (memequal(r->URL.Path.base, "/plaintext", sizeof("/plaintext") - 1)) {
+		PlaintextHandler(w, r);
+	}
 }
 
 
@@ -24,6 +35,7 @@ _start(void)
 	if ((err = ListenAndServe(port, Router)) != nil) {
 		FatalError("Failed to start HTTP server:", err);
 	}
+
 	Exit(0);
 }
 
