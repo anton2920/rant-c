@@ -50,6 +50,9 @@ case $1 in
 			done
 		fi
 		;;
+	prof)
+		run cc -o $PROJECT -O3 -mavx2 -fno-omit-frame-pointer $CFLAGS $LDFLAGS $SRC
+		;;
 	release)
 		run cc -o $PROJECT -O3 -mavx2 $CFLAGS $LDFLAGS $SRC
 		;;
