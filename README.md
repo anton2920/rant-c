@@ -8,7 +8,7 @@ HTTP server supports only `GET` requests. Query parameters could be included but
 
 For a complete Go version of this server, see [rant-go](https://github.com/anton2920/rant-go).
 
-# Performance
+## Performance
 
 Using [wrk](https://github.com/wg/wrk) I've measured performance of `net/http` and my server using rules of [Plaintext](https://github.com/TechEmpower/FrameworkBenchmarks/wiki/Project-Information-Framework-Tests-Overview#plaintext) benchmark. Results on my `i7 6700K` with 32 GiB RAM, sending 16 pipelined requests and receiving `text/plain` `Hello, world\n` responses are following:
 
@@ -46,6 +46,6 @@ Note that currently `rant-c` shows worse results than `rant-go`, primarily becau
 - `rant-go` is compiled with profile-guided optimization, which increases performance by a couple per-cents.
 - `rant-c` is an unfinished project, there's a room for experimentation and improvements.
 
-# Copyright
+## Copyright
 
 Pavlovskii Anton, 2023-2024 (MIT). See [LICENSE](LICENSE) for more details.
