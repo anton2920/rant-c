@@ -2,7 +2,7 @@
 
 [Rant](https://rant.anton2920.ru) is the simple [X](https://x.com) clone built using an experimental high-performance HTTP server. It allows you to watch you my short messages, search for them either on the client or on the server and subscribe to updates using [RSS](https://rant.anton2920.ru/rss).
 
-This project is a rewrite of original server used by [rant-go] in C and inline assembly. It's build without using any libraries, relying only on operating system's system call interface. Currently only `freebsd/amd64` is supported.
+This project is a rewrite of original server used by [rant-go](https://github.com/anton2920/rant-go) in C and inline assembly. It's build without using any libraries, relying only on operating system's system call interface. Currently only `freebsd/amd64` is supported.
 
 HTTP server supports only `GET` requests. Query parameters could be included but must be parsed by hand. It also supports pipelining, infinite keep-alives and a lot of concurrent connections.
 
@@ -40,7 +40,7 @@ Transfer/sec:    646.56MB
 
 Both server and `wrk` were running on one computer. For each server  `wrk` parameters were selected to produce the best results.
 
-Note that currently `rant-c` shows worse than `rant-go`, primarily because:
+Note that currently `rant-c` shows worse results than `rant-go`, primarily because:
 
 - `rant-go` uses SIMD for `FindChar()`, which doubles the performance of this function.
 - `rant-go` is compiled with profile-guided optimization, which increases performance by a couple per-cents.
